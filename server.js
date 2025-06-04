@@ -16,6 +16,11 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+// NOVO: Rota para a URL raiz para indicar que o servidor está funcionando
+app.get('/', (req, res) => {
+  res.send('Servidor proxy LivePix está online e funcionando! Use as rotas /api/livepix/token e /api/livepix/messages.');
+});
+
 // Rota para Obter o Token de Acesso LivePix
 app.post('/api/livepix/token', async (req, res) => {
   // OBTENDO CREDENCIAIS DE VARIÁVEIS DE AMBIENTE PARA SEGURANÇA EM PRODUÇÃO
