@@ -1,9 +1,9 @@
-// Caminho: meu-sorteio-livepix-backend/server.js
+// server.js - Seu servidor de backend para implantação
 
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const fetch = require('node-fetch');
+const fetch = require('node-fetch'); // Importa node-fetch para requisições HTTP
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -21,6 +21,7 @@ app.post('/api/livepix/token', async (req, res) => {
   const clientSecret = process.env.LIVEPIX_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
+    console.error('Erro: LIVEPIX_CLIENT_ID ou LIVEPIX_CLIENT_SECRET não configurados como variáveis de ambiente.');
     return res.status(400).json({ error: 'ID do Cliente e Segredo do Cliente são obrigatórios no servidor (variáveis de ambiente).' });
   }
 
@@ -40,16 +41,16 @@ app.post('/api/livepix/token', async (req, res) => {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Erro do LivePix OAuth:', errorData);
-      return res.status(response.status).json(errorData);
+      const errorText = await response.text(); // Tenta ler o texto completo do erro
+      console.error(`Erro ao obter token do LivePix OAuth: Status ${response.status}, Resposta: ${errorText}`);
+      return res.status(response.status).json({ error: `Erro ao obter token do LivePix: ${errorText}` });
     }
 
     const data = await response.json();
     res.json(data);
   } catch (error) {
-    console.error('Erro no proxy ao obter token:', error);
-    res.status(500).json({ error: 'Erro interno do servidor ao obter token.' });
+    console.error('Erro inesperado no proxy ao obter token:', error);
+    res.status(500).json({ error: `Erro interno do servidor ao obter token: ${error.message}` });
   }
 });
 
@@ -64,10 +65,10 @@ app.get('/api/livepix/messages', async (req, res) => {
   const accessToken = authHeader.split(' ')[1];
 
   try {
-    let allMessages = [];
+    let allLivePixMessages = [];
     let page = 1;
     const limitPerPage = 100;
-    const MAX_PAGES = 20; // Busca até 2000 doações (20 * 100)
+    const MAX_PAGES = 20; // Buscar até 2000 doações do LivePix
 
     while (page <= MAX_PAGES) {
       const livepixApiUrl = `https://api.livepix.gg/v2/messages?limit=${limitPerPage}&page=${page}`;
@@ -81,15 +82,15 @@ app.get('/api/livepix/messages', async (req, res) => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error(`Erro do LivePix API na página ${page}:`, errorData);
-        return res.status(response.status).json(errorData);
+        const errorText = await response.text(); // Tenta ler o texto completo do erro
+        console.error(`Erro do LivePix API na página ${page}: Status ${response.status}, Resposta: ${errorText}`);
+        return res.status(response.status).json({ error: `Erro da API LivePix: ${errorText}` });
       }
 
       const result = await response.json();
       const currentPageMessages = result.data || [];
 
-      allMessages = allMessages.concat(currentPageMessages);
+      allLivePixMessages = allLivePixMessages.concat(currentPageMessages);
 
       if (currentPageMessages.length < limitPerPage) {
         break;
@@ -97,13 +98,13 @@ app.get('/api/livepix/messages', async (req, res) => {
       page++;
     }
 
-    let filteredMessages = allMessages;
+    let filteredMessages = allLivePixMessages;
 
     if (startDate || endDate) {
       const start = startDate ? new Date(startDate + 'T00:00:00-03:00') : null;
       const end = endDate ? new Date(endDate + 'T23:59:59-03:00') : null;
 
-      filteredMessages = allMessages.filter(msg => {
+      filteredMessages = allLivePixMessages.filter(msg => {
         const messageDate = new Date(msg.createdAt);
 
         let isAfterStart = true;
@@ -124,8 +125,8 @@ app.get('/api/livepix/messages', async (req, res) => {
 
     res.json({ data: uniqueMessages });
   } catch (error) {
-    console.error('Erro no proxy ao buscar mensagens:', error);
-    res.status(500).json({ error: 'Erro interno do servidor ao buscar mensagens.' });
+    console.error('Erro inesperado no proxy ao buscar mensagens:', error);
+    res.status(500).json({ error: `Erro interno do servidor ao buscar mensagens: ${error.message}` });
   }
 });
 
